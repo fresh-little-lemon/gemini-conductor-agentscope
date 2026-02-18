@@ -155,7 +155,21 @@ class BrowserAgent(ReActAgent):
         self._register_skill_tool(form_filling)
 
         # Build a tool list without screenshot to avoid unnecessary captures
-        self.no_screenshot_tool_list = [
+        # self.no_screenshot_tool_list = [
+        #     tool
+        #     for tool in self.toolkit.get_json_schemas()
+        #     if tool.get("function", {}).get("name")
+        #     != "browser_take_screenshot"
+        # ]
+
+    def _get_model_tools(self) -> list[dict]:
+        """
+        Get the current valid tool schemas for model invocation.
+
+        - Always fetch latest schemas from toolkit
+        - Remove screenshot tool (handled internally)
+        """
+        return [
             tool
             for tool in self.toolkit.get_json_schemas()
             if tool.get("function", {}).get("name")
@@ -303,7 +317,7 @@ class BrowserAgent(ReActAgent):
 
         res = await self.model(
             prompt,
-            tools=self.no_screenshot_tool_list,
+            tools=self._get_model_tools(),
             tool_choice=tool_choice,
         )
 
@@ -365,7 +379,7 @@ class BrowserAgent(ReActAgent):
             )
             res = await self.model(
                 prompt,
-                tools=self.no_screenshot_tool_list,
+                tools=self._get_model_tools(),
             )
 
             interrupted_by_user = False
