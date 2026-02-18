@@ -8,9 +8,8 @@ import argparse
 import traceback
 from pydantic import BaseModel, Field
 from browser_agent import BrowserAgent
-from agentscope.formatter import DashScopeChatFormatter
+from utils.model_loader import AutoModel, AutoFormatter
 from agentscope.memory import InMemoryMemory
-from agentscope.model import DashScopeChatModel
 from agentscope.tool import Toolkit
 from agentscope.mcp import StdIOStatefulClient
 from agentscope.agent import UserAgent
@@ -27,6 +26,7 @@ class FinalResult(BaseModel):
 async def main(
     start_url_param: str = "https://www.google.com",
     max_iters_param: int = 50,
+    config_path: str = "configs/model_config.json",
 ) -> None:
     """The main entry point for the browser agent example."""
     # Setup toolkit with browser tools from MCP server
@@ -42,14 +42,14 @@ async def main(
         await browser_client.connect()
         await toolkit.register_mcp_client(browser_client)
 
+        # Load model and formatter from config
+        model = AutoModel.from_config(config_path)
+        formatter = AutoFormatter.from_config(config_path)
+
         agent = BrowserAgent(
             name="Browser-Use Agent",
-            model=DashScopeChatModel(
-                api_key=os.environ.get("DASHSCOPE_API_KEY"),
-                model_name="qwen3-max",
-                stream=False,
-            ),
-            formatter=DashScopeChatFormatter(),
+            model=model,
+            formatter=formatter,
             memory=InMemoryMemory(),
             toolkit=toolkit,
             max_iters=max_iters_param,
@@ -99,6 +99,12 @@ def parse_arguments() -> argparse.Namespace:
         default=50,
         help="Maximum number of iterations (default: 50)",
     )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default="configs/model_config.json",
+        help="Path to the model configuration file (default: configs/model_config.json)",
+    )
     return parser.parse_args()
 
 
@@ -113,6 +119,7 @@ if __name__ == "__main__":
     print("\nUsage examples:")
     print("  python main.py                           # Start with defaults")
     print("  python main.py --start-url https://example.com --max-iters 100")
+    print("  python main.py --config configs/my_config.json")
     print("  python main.py --help                   # Show all options")
     print()
 
@@ -122,6 +129,7 @@ if __name__ == "__main__":
     # Get other parameters
     start_url = args.start_url
     max_iters = args.max_iters
+    config_file = args.config
 
     # Validate parameters
     if max_iters <= 0:
@@ -134,5 +142,6 @@ if __name__ == "__main__":
 
     print(f"Starting URL: {start_url}")
     print(f"Maximum iterations: {max_iters}")
+    print(f"Config file: {config_file}")
 
-    asyncio.run(main(start_url, max_iters))
+    asyncio.run(main(start_url, max_iters, config_file))

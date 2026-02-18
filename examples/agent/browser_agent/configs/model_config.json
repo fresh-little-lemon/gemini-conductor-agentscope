@@ -1,0 +1,16 @@
+{
+    "model_type": "openai",
+    "model_name": "glm-5",
+    "api_key": "40a114783556416892a6e3914856367f.xYQOslFt2fzVmER8",
+    "client_kwargs": {
+        "base_url": "https://open.bigmodel.cn/api/paas/v4"
+    },
+    "generate_kwargs": {
+        "extra_body": {
+            "thinking": {
+                "type": "disabled"
+            }
+        }
+    },
+    "stream": false
+}
