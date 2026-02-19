@@ -9,6 +9,7 @@ import traceback
 from pydantic import BaseModel, Field
 from browser_agent import BrowserAgent
 from utils.model_loader import AutoModel, AutoFormatter
+from utils.token_tracker import TokenUsageTracker
 from agentscope.memory import InMemoryMemory
 from agentscope.tool import Toolkit
 from agentscope.mcp import StdIOStatefulClient
@@ -42,9 +43,18 @@ async def main(
         await browser_client.connect()
         await toolkit.register_mcp_client(browser_client)
 
+        # Initialize token usage tracker
+        tracker = TokenUsageTracker()
+
         # Load model and formatter from config
         model = AutoModel.from_config(config_path)
+        # Track model usage
+        model = tracker.track_model(model)
+
         formatter = AutoFormatter.from_config(config_path)
+
+        # Track toolkit calls
+        toolkit = tracker.track_toolkit(toolkit)
 
         agent = BrowserAgent(
             name="Browser-Use Agent",
@@ -54,7 +64,22 @@ async def main(
             toolkit=toolkit,
             max_iters=max_iters_param,
             start_url=start_url_param,
+            token_counter=tracker,
         )
+
+        # Register agent hooks for active time tracking
+        agent_hooks = tracker.get_agent_hooks()
+        agent.register_instance_hook(
+            "pre_reply",
+            "tracker_pre_reply",
+            agent_hooks["pre_reply"],
+        )
+        agent.register_instance_hook(
+            "post_reply",
+            "tracker_post_reply",
+            agent_hooks["post_reply"],
+        )
+
         user = UserAgent("User")
 
         msg = None
@@ -64,6 +89,9 @@ async def main(
                 break
             msg = await agent(msg, structured_model=FinalResult)
             await agent.memory.clear()
+
+        # Show usage summary
+        tracker.show_summary()
 
     except Exception as e:
         traceback.print_exc()

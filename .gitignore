@@ -149,3 +149,6 @@ package-lock.json
 .wireit/
 .angular/
 uv.lock
+
+examples/agent/browser_agent/session_logs
+examples/agent/browser_agent/configs
