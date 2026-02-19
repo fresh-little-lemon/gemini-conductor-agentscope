@@ -150,5 +150,5 @@ package-lock.json
 .angular/
 uv.lock
 
-examples/agent/browser_agent/session_logs
+examples/agent/browser_agent/session
 examples/agent/browser_agent/configs

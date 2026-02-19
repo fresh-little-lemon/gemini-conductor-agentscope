@@ -52,7 +52,8 @@ class TokenUsageTracker(TokenCounterBase):
         
         # Setup logging directory
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.log_dir = os.path.join("session_logs", f"session_{self.timestamp}")
+        self.session_dir = os.path.join("sessions", self.timestamp)
+        self.log_dir = os.path.join(self.session_dir, "traces")
         os.makedirs(self.log_dir, exist_ok=True)
         self.request_index = 0
 

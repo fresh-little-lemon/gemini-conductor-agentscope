@@ -28,6 +28,7 @@ async def main(
     start_url_param: str = "https://www.google.com",
     max_iters_param: int = 50,
     config_path: str = "configs/model_config.json",
+    args_dict: dict | None = None,
 ) -> None:
     """The main entry point for the browser agent example."""
     # Setup toolkit with browser tools from MCP server
@@ -45,6 +46,10 @@ async def main(
 
         # Initialize token usage tracker
         tracker = TokenUsageTracker()
+
+        # Setup session logging
+        from utils.logger_utils import setup_session_logger
+        setup_session_logger(tracker.session_dir, tracker.timestamp, args_dict or {})
 
         # Load model and formatter from config
         model = AutoModel.from_config(config_path)
@@ -172,4 +177,4 @@ if __name__ == "__main__":
     print(f"Maximum iterations: {max_iters}")
     print(f"Config file: {config_file}")
 
-    asyncio.run(main(start_url, max_iters, config_file))
+    asyncio.run(main(start_url, max_iters, config_file, vars(args)))
