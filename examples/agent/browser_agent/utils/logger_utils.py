@@ -16,6 +16,7 @@ class SessionJSONLogger:
         self.session_id = session_id
         self.metadata = metadata
         self.history: List[Dict[str, Any]] = []
+        self.summary: Dict[str, Any] = {}
         
         # Determine log file path: sessions/{ts}/logs/runtime.json
         self.log_dir = os.path.join(session_dir, "logs")
@@ -27,11 +28,16 @@ class SessionJSONLogger:
         self.history.append(entry)
         self._flush()
 
+    def set_summary(self, summary: Dict[str, Any]) -> None:
+        self.summary = summary
+        self._flush()
+
     def _flush(self) -> None:
         data = {
             "session_id": self.session_id,
             "metadata": self.metadata,
-            "history": self.history
+            "history": self.history,
+            "summary": self.summary
         }
         try:
             with open(self.log_file, "w", encoding="utf-8") as f:
@@ -68,7 +74,7 @@ class SessionJSONHandler(logging.Handler):
         except Exception:
             self.handleError(record)
 
-def setup_session_logger(session_dir: str, session_id: str, metadata: Dict[str, Any], level: str = "INFO") -> None:
+def setup_session_logger(session_dir: str, session_id: str, metadata: Dict[str, Any], level: str = "INFO") -> SessionJSONLogger:
     """
     Sets up JSON logging for the session.
     Records both standard logger output and agent print messages into a structured JSON.
@@ -82,6 +88,10 @@ def setup_session_logger(session_dir: str, session_id: str, metadata: Dict[str, 
             Metadata to include in the log file (e.g., CLI arguments).
         level (`str`, defaults to `"INFO"`):
             The logging level.
+
+    Returns:
+        SessionJSONLogger:
+            The session logger instance.
     """
     session_logger = SessionJSONLogger(session_dir, session_id, metadata)
     
@@ -114,3 +124,5 @@ def setup_session_logger(session_dir: str, session_id: str, metadata: Dict[str, 
             
     # Register hook for ALL agents (BrowserAgent, UserAgent, etc.)
     AgentBase.register_class_hook("post_print", "json_log_recorder", agent_print_hook)
+
+    return session_logger

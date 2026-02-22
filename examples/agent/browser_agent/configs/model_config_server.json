@@ -1,0 +1,9 @@
+{
+    "model_type": "openai",
+    "model_name": "qwen3-vl",
+    "api_key": "EMPTY",
+    "client_kwargs": {
+        "base_url": "http://0.0.0.0:8081/v1"
+    },
+    "stream": false
+}

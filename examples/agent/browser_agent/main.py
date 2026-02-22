@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from browser_agent import BrowserAgent
 from utils.model_loader import AutoModel, AutoFormatter
 from utils.token_tracker import TokenUsageTracker
+from utils.mcp_utils import create_browser_client
 from agentscope.memory import InMemoryMemory
 from agentscope.tool import Toolkit
 from agentscope.mcp import StdIOStatefulClient
@@ -27,16 +28,37 @@ class FinalResult(BaseModel):
 async def main(
     start_url_param: str = "https://www.google.com",
     max_iters_param: int = 50,
-    config_path: str = "configs/model_config.json",
+    model_config: str = "configs/model_config.json",
     args_dict: dict | None = None,
+    headless: bool = False,
+    record_video: bool = False,
+    executable_path: str | None = None,
+    mcp_config: str = "configs/mcp_config.json",
+    prompt: str | None = None,
 ) -> None:
     """The main entry point for the browser agent example."""
+    from utils.video_manager import VideoManager
+    from agentscope.message import Msg
+
+    # Initialize token usage tracker early to get session directory
+    tracker = TokenUsageTracker()
+    session_dir = tracker.session_dir
+
+    # Initialize video manager with full session record flag
+    # Capability is always enabled for agent clips
+    video_manager = VideoManager(session_dir, record_session=record_video)
+
     # Setup toolkit with browser tools from MCP server
     toolkit = Toolkit()
-    browser_client = StdIOStatefulClient(
-        name="playwright-mcp",
-        command="npx",
-        args=["@playwright/mcp@latest"],
+    
+    # Always pass the video manager to enable recording at MCP level
+    # so that agent tools work out of the box.
+    browser_client, final_executable_path = create_browser_client(
+        headless=headless,
+        video_manager=video_manager,
+        isolated=True, # Default to isolated as per requirements
+        executable_path=executable_path,
+        mcp_config_path=mcp_config,
     )
 
     try:
@@ -44,19 +66,23 @@ async def main(
         await browser_client.connect()
         await toolkit.register_mcp_client(browser_client)
 
-        # Initialize token usage tracker
-        tracker = TokenUsageTracker()
+        # Mark session start for video manager timeline
+        video_manager.start_session()
 
+        # Update args_dict with the actual executable path for logging
+        if args_dict:
+            args_dict["executable_path"] = final_executable_path
+            
         # Setup session logging
         from utils.logger_utils import setup_session_logger
-        setup_session_logger(tracker.session_dir, tracker.timestamp, args_dict or {})
+        session_logger = setup_session_logger(session_dir, tracker.timestamp, args_dict or {})
 
         # Load model and formatter from config
-        model = AutoModel.from_config(config_path)
+        model = AutoModel.from_config(model_config)
         # Track model usage
         model = tracker.track_model(model)
 
-        formatter = AutoFormatter.from_config(config_path)
+        formatter = AutoFormatter.from_config(model_config)
 
         # Track toolkit calls
         toolkit = tracker.track_toolkit(toolkit)
@@ -71,6 +97,9 @@ async def main(
             start_url=start_url_param,
             token_counter=tracker,
         )
+        
+        # Attach video manager to agent for tool usage
+        agent.video_manager = video_manager
 
         # Register agent hooks for active time tracking
         agent_hooks = tracker.get_agent_hooks()
@@ -85,15 +114,23 @@ async def main(
             agent_hooks["post_reply"],
         )
 
-        user = UserAgent("User")
+        if prompt:
+            # Non-interactive mode: execute provided prompt and exit
+            msg = Msg("User", prompt, role="user")
+            await agent(msg, structured_model=FinalResult)
+        else:
+            # Interactive mode: loop until 'exit'
+            user = UserAgent("User")
+            msg = None
+            while True:
+                msg = await user(msg)
+                if msg.get_text_content() == "exit":
+                    break
+                msg = await agent(msg, structured_model=FinalResult)
+                await agent.memory.clear()
 
-        msg = None
-        while True:
-            msg = await user(msg)
-            if msg.get_text_content() == "exit":
-                break
-            msg = await agent(msg, structured_model=FinalResult)
-            await agent.memory.clear()
+        # Update session log with token usage summary
+        session_logger.set_summary(tracker.get_summary_dict())
 
         # Show usage summary
         tracker.show_summary()
@@ -108,6 +145,10 @@ async def main(
         try:
             await browser_client.close()
             print("Browser client closed successfully.")
+            
+            # Finalize video processing
+            video_manager.finalize()
+                    
         except Exception as cleanup_error:
             print(f"Error while closing browser client: {cleanup_error}")
 
@@ -133,10 +174,36 @@ def parse_arguments() -> argparse.Namespace:
         help="Maximum number of iterations (default: 50)",
     )
     parser.add_argument(
-        "--config",
+        "--model-config",
         type=str,
         default="configs/model_config.json",
         help="Path to the model configuration file (default: configs/model_config.json)",
+    )
+    parser.add_argument(
+        "--mcp-config",
+        type=str,
+        default="configs/mcp_config.json",
+        help="Path to the MCP configuration file (default: configs/mcp_config.json)",
+    )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Run browser in headless mode (default: False, i.e., headed)",
+    )
+    parser.add_argument(
+        "--record",
+        action="store_true",
+        help="Record full session video (saved to session_logs/)",
+    )
+    parser.add_argument(
+        "--executable-path",
+        type=str,
+        help="Path to the browser executable",
+    )
+    parser.add_argument(
+        "--prompt",
+        type=str,
+        help="Run in non-interactive mode with the given prompt and exit",
     )
     return parser.parse_args()
 
@@ -150,9 +217,13 @@ if __name__ == "__main__":
         "by `npx @playwright/mcp@latest`",
     )
     print("\nUsage examples:")
-    print("  python main.py                           # Start with defaults")
+    print("  python main.py                           # Start with defaults (headed)")
+    print("  python main.py --headless                # Start in headless mode")
+    print("  python main.py --record                 # Record full session video")
+    print("  python main.py --prompt \"YOUR_PROMPT\"    # Run once and exit")
+    print("  python main.py --executable-path /path/to/chrome")
     print("  python main.py --start-url https://example.com --max-iters 100")
-    print("  python main.py --config configs/my_config.json")
+    print("  python main.py --model-config configs/my_config.json")
     print("  python main.py --help                   # Show all options")
     print()
 
@@ -162,7 +233,12 @@ if __name__ == "__main__":
     # Get other parameters
     start_url = args.start_url
     max_iters = args.max_iters
-    config_file = args.config
+    model_config = args.model_config
+    mcp_config = args.mcp_config
+    headless_mode = args.headless
+    record_session = args.record
+    executable_path = args.executable_path
+    prompt = args.prompt
 
     # Validate parameters
     if max_iters <= 0:
@@ -173,8 +249,37 @@ if __name__ == "__main__":
         print("Error: start-url must be a valid HTTP/HTTPS URL")
         sys.exit(1)
 
+    if not os.path.exists(model_config):
+        print(f"Error: Model config file not found: {model_config}")
+        sys.exit(1)
+
     print(f"Starting URL: {start_url}")
     print(f"Maximum iterations: {max_iters}")
-    print(f"Config file: {config_file}")
+    print(f"Model config: {model_config}")
+    if os.path.exists(mcp_config):
+        print(f"MCP config: {mcp_config}")
+    else:
+        # For logging, set to null if not exists
+        args.mcp_config = None
+        
+    print(f"Headless mode: {headless_mode}")
+    print(f"Record session: {record_session}")
+    if executable_path:
+        print(f"Executable path: {executable_path}")
+    if prompt:
+        print(f"Prompt: {prompt} (Non-interactive mode)")
+    print()
 
-    asyncio.run(main(start_url, max_iters, config_file, vars(args)))
+    asyncio.run(
+        main(
+            start_url,
+            max_iters,
+            model_config,
+            vars(args),
+            headless=headless_mode,
+            record_video=record_session,
+            executable_path=executable_path,
+            mcp_config=mcp_config,
+            prompt=prompt,
+        ),
+    )

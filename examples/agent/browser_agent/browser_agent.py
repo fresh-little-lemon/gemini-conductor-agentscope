@@ -39,6 +39,10 @@ from build_in_helper._image_understanding import image_understanding
 from build_in_helper._video_understanding import video_understanding
 from build_in_helper._file_download import file_download
 from build_in_helper._form_filling import form_filling
+from build_in_helper._video_recording import (
+    browser_start_recording,
+    browser_stop_recording,
+)
 
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PROMPT_DIR = os.path.join(_CURRENT_DIR, "build_in_prompt")
@@ -153,6 +157,8 @@ class BrowserAgent(ReActAgent):
         # Register other skill tools
         self._register_skill_tool(file_download)
         self._register_skill_tool(form_filling)
+        self._register_skill_tool(browser_start_recording)
+        self._register_skill_tool(browser_stop_recording)
 
         # Build a tool list without screenshot to avoid unnecessary captures
         # self.no_screenshot_tool_list = [

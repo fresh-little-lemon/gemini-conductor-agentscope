@@ -54,7 +54,6 @@ class TokenUsageTracker(TokenCounterBase):
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.session_dir = os.path.join("sessions", self.timestamp)
         self.log_dir = os.path.join(self.session_dir, "traces")
-        os.makedirs(self.log_dir, exist_ok=True)
         self.request_index = 0
 
     async def count(self, messages: list[dict], **kwargs: Any) -> int:
@@ -67,6 +66,7 @@ class TokenUsageTracker(TokenCounterBase):
         filename = f"{self.request_index:03d}_{prefix}.json"
         filepath = os.path.join(self.log_dir, filename)
         try:
+            os.makedirs(self.log_dir, exist_ok=True)
             with open(filepath, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2, ensure_ascii=False, default=str)
         except Exception as e:
@@ -210,6 +210,30 @@ class TokenUsageTracker(TokenCounterBase):
             "post_reply": post_reply
         }
 
+    def get_summary_dict(self) -> Dict[str, Any]:
+        """Returns a dictionary containing all tracked metrics."""
+        wall_time = time.time() - self.start_wall_time
+        success_rate = (self.successful_tool_calls / self.tool_calls_count * 100) if self.tool_calls_count > 0 else 0
+        
+        return {
+            "run_id": _config.run_id,
+            "tool_calls": {
+                "total": self.tool_calls_count,
+                "successful": self.successful_tool_calls,
+                "failed": self.failed_tool_calls,
+                "success_rate": round(success_rate, 2)
+            },
+            "performance": {
+                "wall_time": round(wall_time, 2),
+                "agent_active_time": round(self.agent_active_time, 2),
+                "api_time": round(self.total_api_time, 2),
+                "tool_time": round(self.total_tool_time, 2),
+                "api_percent": round((self.total_api_time / self.agent_active_time * 100), 2) if self.agent_active_time > 0 else 0,
+                "tool_percent": round((self.total_tool_time / self.agent_active_time * 100), 2) if self.agent_active_time > 0 else 0
+            },
+            "model_usage": self.stats
+        }
+
     def show_summary(self) -> None:
         """Prints a visual interaction summary."""
         wall_time = time.time() - self.start_wall_time
@@ -230,7 +254,7 @@ class TokenUsageTracker(TokenCounterBase):
         print(f"\n{BLUE}Agent powering down. Goodbye!{RESET}")
         print(f"Detailed logs saved to: {self.log_dir}")
         print(f"\n{BOLD}Interaction Summary{RESET}")
-        print(f"Session ID:          {_config.run_id}")
+        print(f"Session ID:          {self.timestamp}_{_config.run_id}")
         print(f"Tool Calls:          {self.tool_calls_count} ( {GREEN}✓ {self.successful_tool_calls}{RESET} x {self.failed_tool_calls} )")
         success_rate = (self.successful_tool_calls / self.tool_calls_count * 100) if self.tool_calls_count > 0 else 0
         print(f"Success Rate:        {GREEN}{success_rate:.1f}%{RESET}")
