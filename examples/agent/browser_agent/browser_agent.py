@@ -182,6 +182,48 @@ class BrowserAgent(ReActAgent):
             != "browser_take_screenshot"
         ]
 
+    def _merge_content(
+        self,
+        base_content: list,
+        new_content: list,
+    ) -> list:
+        """Merge streaming deltas into base content blocks."""
+        for i, new_block in enumerate(new_content):
+            found = False
+            # Try to merge with existing block of same type and index/ID if applicable
+            # Many stream implementations don't provide ID in every chunk
+            for j, base_block in enumerate(base_content):
+                # Match by ID if both have it, or by index if neither has it or they match by index
+                id_match = (
+                    base_block.get("id") is not None
+                    and base_block.get("id") == new_block.get("id")
+                )
+                index_match = (
+                    j == i
+                    and base_block["type"] == new_block["type"]
+                )
+                
+                if id_match or index_match:
+                    if new_block["type"] == "text":
+                        base_block["text"] = (base_block.get("text") or "") + (new_block.get("text") or "")
+                    elif new_block["type"] == "tool_use":
+                        if new_block.get("name") is not None:
+                            base_block["name"] = new_block["name"]
+                        if new_block.get("input") is not None:
+                            if isinstance(base_block.get("input"), str) and isinstance(new_block.get("input"), str):
+                                base_block["input"] += new_block["input"]
+                            elif isinstance(base_block.get("input"), dict) and isinstance(new_block.get("input"), dict):
+                                base_block["input"].update(new_block["input"])
+                            else:
+                                base_block["input"] = new_block["input"]
+                    elif new_block["type"] == "thinking":
+                        base_block["thinking"] = (base_block.get("thinking") or "") + (new_block.get("thinking") or "")
+                    found = True
+                    break
+            if not found:
+                base_content.append(copy.deepcopy(new_block))
+        return base_content
+
     async def reply(  # pylint: disable=R0912,R0915
         self,
         msg: Msg | list[Msg] | None = None,
@@ -333,7 +375,10 @@ class BrowserAgent(ReActAgent):
             if self.model.stream:
                 msg = Msg(self.name, [], "assistant")
                 async for content_chunk in res:
-                    msg.content = content_chunk.content
+                    msg.content = self._merge_content(
+                        msg.content,  # type: ignore[arg-type]
+                        content_chunk.content,
+                    )
                 await self.print(msg)
             else:
                 msg = Msg(self.name, list(res.content), "assistant")
@@ -394,7 +439,10 @@ class BrowserAgent(ReActAgent):
                 if self.model.stream:
                     msg = Msg(self.name, [], "assistant")
                     async for content_chunk in res:
-                        msg.content = content_chunk.content
+                        msg.content = self._merge_content(
+                            msg.content,  # type: ignore[arg-type]
+                            content_chunk.content,
+                        )
                     # await self.print(msg)
                 else:
                     msg = Msg(self.name, list(res.content), "assistant")
@@ -569,7 +617,8 @@ class BrowserAgent(ReActAgent):
         decompose_text = ""
         if self.model.stream:
             async for content_chunk in res:
-                decompose_text = content_chunk.content[0]["text"]
+                if content_chunk.content:
+                    decompose_text += content_chunk.content[0]["text"]
         else:
             decompose_text = res.content[0]["text"]
         logger.info(decompose_text)
@@ -611,7 +660,8 @@ class BrowserAgent(ReActAgent):
         reflection_text = ""
         if self.model.stream:
             async for content_chunk in reflection_res:
-                reflection_text = content_chunk.content[0]["text"]
+                if content_chunk.content:
+                    reflection_text += content_chunk.content[0]["text"]
         else:
             reflection_text = reflection_res.content[0]["text"]
         logger.info(reflection_text)
@@ -706,7 +756,8 @@ class BrowserAgent(ReActAgent):
         )
         snapshot_str = ""
         async for chunk in snapshot_response:
-            snapshot_str = chunk.content[0]["text"]
+            if chunk.content:
+                snapshot_str += chunk.content[0]["text"]
         snapshot_in_chunk = self._split_snapshot_by_chunk(snapshot_str)
         return snapshot_in_chunk
 
@@ -727,7 +778,8 @@ class BrowserAgent(ReActAgent):
                 "1. What has been completed so far.\n"
                 "2. What key information has been found.\n"
                 "3. What remains to be done.\n"
-                "Ensure that your summary is clear, concise, and that no tasks are repeated or skipped."
+                "Ensure that your summary is clear, concise, and that no tasks are repeated or skipped. "
+                "Output ONLY the summary text. DO NOT call any tools in your response."
             ),
             role="user",
         )
@@ -743,11 +795,18 @@ class BrowserAgent(ReActAgent):
         print_msg = Msg(name=self.name, content=[], role="assistant")
         if self.model.stream:
             async for content_chunk in res:
-                summary_text = content_chunk.content[0]["text"]
+                # Accumulate only text from blocks
+                for block in content_chunk.content:
+                    if block["type"] == "text":
+                        summary_text += block.get("text", "")
                 print_msg.content = content_chunk.content
                 await self.print(print_msg, last=False)
         else:
-            summary_text = res.content[0]["text"]
+            # Extract text from non-streaming response
+            for block in res.content:
+                if block["type"] == "text":
+                    summary_text += block.get("text", "")
+        
         print_msg.content = [TextBlock(type="text", text=summary_text)]
         await self.print(print_msg, last=True)
 
@@ -782,14 +841,13 @@ class BrowserAgent(ReActAgent):
             )
             # Extract image base64 from response
             async for chunk in screenshot_response:
-                if (
-                    chunk.content
-                    and len(chunk.content) > 1
-                    and "data" in chunk.content[1]
-                ):
-                    image_data = chunk.content[1]["data"]
-                else:
-                    image_data = None
+                if chunk.content and len(chunk.content) > 1:
+                    block = chunk.content[1]
+                    if isinstance(block, dict):
+                        if "data" in block:
+                            image_data = block["data"]
+                        elif "source" in block and "data" in block["source"]:
+                            image_data = block["source"]["data"]
         except Exception:
             image_data = None
         return image_data
@@ -940,9 +998,11 @@ class BrowserAgent(ReActAgent):
                 msgs=[Msg("user", user_prompt, role="user")],
             )
             response = await self.model(prompt)
+            revise_text = ""
             if self.model.stream:
                 async for chunk in response:
-                    revise_text = chunk.content[0]["text"]
+                    if chunk.content:
+                        revise_text += chunk.content[0]["text"]
             else:
                 revise_text = response.content[0]["text"]
             try:
@@ -1073,116 +1133,6 @@ class BrowserAgent(ReActAgent):
                 is_last=True,
             )
 
-    async def image_understanding(
-        self,
-        object_description: str,
-        task: str,
-    ) -> ToolResponse:
-        """
-        Locate an element by description, take a focused screenshot, and solve a task using it.
-        """
-        sys_prompt = (
-            "You are a web page analysis expert. Given the following page snapshot and object description, "
-            "identify the exact element and its reference string (ref) that matches the description. "
-            'Return ONLY a JSON object: {"element": <element description>, "ref": <ref string>}'
-        )
-        snapshot_chunks = await self._get_snapshot_in_text()
-        page_snapshot = snapshot_chunks[0] if snapshot_chunks else ""
-        user_prompt = f"Object description: {object_description}\nPage snapshot:\n{page_snapshot}"
-        prompt = await self.formatter.format(
-            msgs=[
-                Msg("system", sys_prompt, role="system"),
-                Msg("user", user_prompt, role="user"),
-            ],
-        )
-        res = await self.model(prompt)
-        if self.model.stream:
-            async for chunk in res:
-                model_text = chunk.content[0]["text"]
-        else:
-            model_text = res.content[0]["text"]
-        try:
-            if "```json" in model_text:
-                model_text = model_text.replace("```json", "").replace(
-                    "```",
-                    "",
-                )
-            element_info = json.loads(model_text)
-            element = element_info.get("element", "")
-            ref = element_info.get("ref", "")
-        except Exception:
-            return ToolResponse(
-                content=[
-                    TextBlock(
-                        type="text",
-                        text="Failed to parse element/ref from model output.",
-                    ),
-                ],
-                metadata={"success": False},
-            )
-
-        screenshot_tool_call = ToolUseBlock(
-            id=str(uuid.uuid4()),
-            name="browser_take_screenshot",
-            input={"element": element, "ref": ref},
-            type="tool_use",
-        )
-        screenshot_response = await self.toolkit.call_tool_function(
-            screenshot_tool_call,
-        )
-        image_data = None
-        async for chunk in screenshot_response:
-            if chunk.content and len(chunk.content) > 1:
-                block = chunk.content[1]
-                if "data" in block:
-                    image_data = block["data"]
-                elif "source" in block and "data" in block["source"]:
-                    image_data = block["source"]["data"]
-
-        sys_prompt_task = (
-            "You are a web automation expert. Given the object description, screenshot, and page context, "
-            "solve the following task. Return ONLY the answer as plain text."
-        )
-        content_blocks: list[Any] = [
-            TextBlock(
-                type="text",
-                text=f"Object description: {object_description}\nTask: {task}\nPage snapshot:\n{page_snapshot}",
-            ),
-        ]
-        if image_data:
-            image_block = ImageBlock(
-                type="image",
-                source=Base64Source(
-                    type="base64",
-                    media_type="image/png",
-                    data=image_data,
-                ),
-            )
-            content_blocks.append(image_block)
-        prompt_task = await self.formatter.format(
-            msgs=[
-                Msg("system", sys_prompt_task, role="system"),
-                Msg("user", content_blocks, role="user"),
-            ],
-        )
-        res_task = await self.model(prompt_task)
-        if self.model.stream:
-            async for chunk in res_task:
-                answer_text = chunk.content[0]["text"]
-        else:
-            answer_text = res_task.content[0]["text"]
-        return ToolResponse(
-            content=[
-                TextBlock(
-                    type="text",
-                    text=(
-                        f"Screenshot taken for element: {element}\nref: {ref}\n"
-                        f"Task solution: {answer_text}"
-                    ),
-                ),
-            ],
-        )
-
     async def _validate_finish_status(self, summary: str) -> str:
         """Validate if the agent has completed its task based on the summary."""
         sys_prompt = (
@@ -1219,7 +1169,8 @@ class BrowserAgent(ReActAgent):
         response_text = ""
         if self.model.stream:
             async for content_chunk in res:
-                response_text = content_chunk.content[0]["text"]
+                if content_chunk.content:
+                    response_text += content_chunk.content[0]["text"]
         else:
             response_text = res.content[0]["text"]
         return response_text
@@ -1264,9 +1215,12 @@ class BrowserAgent(ReActAgent):
 
     def _supports_multimodal(self) -> bool:
         """Check if the model supports multimodal input (images/videos)."""
+        model_name = self.model.model_name.lower()
         return (
-            self.model.model_name.startswith("qvq")
-            or "-vl" in self.model.model_name
-            or "4o" in self.model.model_name
-            or "gpt-5" in self.model.model_name
+            model_name.startswith("qvq")
+            or "-vl" in model_name
+            or "-v" in model_name
+            or "4o" in model_name
+            or "gpt-5" in model_name
+            or "glm-4.6v" in model_name
         )

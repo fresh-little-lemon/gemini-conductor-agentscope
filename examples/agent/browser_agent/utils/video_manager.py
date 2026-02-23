@@ -44,15 +44,18 @@ class VideoManager:
         """Returns the temporary directory path for MCP."""
         return str(self.tmp_dir) if self.mcp_recording_enabled else None
 
-    def start_clip(self, label: str):
-        """Marks the start of a semantic clip."""
+    def start_clip(self, label: str, category: str = "task"):
+        """Marks the start of a semantic clip with a category."""
         if not self.mcp_recording_enabled:
             raise RuntimeError("Recording was not enabled for this browser instance.")
         if self.session_start_time is None:
             self.start_session()
             
         offset = time.time() - self.session_start_time
-        self.clip_marks[label] = {"start": max(0, offset - 0.5)}
+        self.clip_marks[label] = {
+            "start": max(0, offset - 0.5),
+            "category": category
+        }
 
     def stop_clip(self, label: str):
         """Marks the end of a semantic clip."""
@@ -77,12 +80,11 @@ class VideoManager:
             if not shutil.which("ffmpeg"):
                 # Fallback: if no ffmpeg, we can't clip, just move the whole thing if requested
                 if self.record_session:
-                    shutil.copy2(str(latest_video), self.final_output.with_suffix(".webm"))
+                    shutil.copy2(latest_video, self.final_output.with_suffix(".webm"))
                 shutil.rmtree(self.tmp_dir)
                 return
 
             # 1. Determine if we need to process the full video
-            # Even if record_session is False, we might need a temporary MP4 to extract clips efficiently
             source_for_clips = latest_video
             
             if self.record_session or self.clip_marks:
@@ -105,19 +107,25 @@ class VideoManager:
             # 2. Extract Semantic Clips (only if marks exist)
             if self.clip_marks:
                 self.clips_dir.mkdir(parents=True, exist_ok=True)
-                for label, times in self.clip_marks.items():
+                for label, info in self.clip_marks.items():
+                    times = info
                     end_time = times.get("end", time.time() - self.session_start_time)
                     duration = end_time - times["start"]
                     
                     if duration <= 0: continue
                     
-                    clip_path = self.clips_dir / f"{label}.mp4"
+                    # Distinguish subfolders based on category
+                    category = times.get("category", "task")
+                    target_dir = self.clips_dir / category
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    clip_path = target_dir / f"{label}.mp4"
                     subprocess.run([
                         "ffmpeg", "-y", "-ss", f"{times['start']:.3f}", 
                         "-t", f"{duration:.3f}", "-i", str(source_for_clips), 
                         "-c", "copy", "-loglevel", "error", str(clip_path)
                     ], check=True)
-                    print(f"Agent clip '{label}' extracted to: {clip_path}")
+                    print(f"[{category.upper()}] Clip '{label}' saved to: {clip_path}")
 
             # Cleanup
             shutil.rmtree(self.tmp_dir)

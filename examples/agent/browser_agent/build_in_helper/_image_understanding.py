@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import uuid
+import re
 from typing import Any
 
 from agentscope.message import (
@@ -45,7 +46,9 @@ async def image_understanding(
         "identify the exact element and its reference string (ref) "
         "that matches the description. "
         "Return ONLY a JSON object: "
-        '{"element": <element description>, "ref": <ref string>}'
+        '{"element": <element description>, "ref": <ref string>}. '
+        "Ensure the JSON is valid. If the element description contains quotes, "
+        "escape them with a backslash or use single quotes."
     )
 
     snapshot_chunks = (
@@ -64,27 +67,57 @@ async def image_understanding(
         ],
     )
     res = await browser_agent.model(prompt)
+    model_text = ""
     if browser_agent.model.stream:
         async for chunk in res:
-            model_text = chunk.content[0]["text"]
+            if chunk.content:
+                for block in chunk.content:
+                    if block["type"] == "text":
+                        model_text += block.get("text", "")
     else:
-        model_text = res.content[0]["text"]
+        for block in res.content:
+            if block["type"] == "text":
+                model_text += block.get("text", "")
 
+    element = ""
+    ref = ""
     try:
-        if "```json" in model_text:
-            model_text = model_text.replace("```json", "").replace(
-                "```",
-                "",
-            )
-        element_info = json.loads(model_text)
-        element = element_info.get("element", "")
-        ref = element_info.get("ref", "")
+        # Robust JSON extraction
+        json_pattern = r"\{.*\}"
+        match = re.search(json_pattern, model_text, re.DOTALL)
+        if match:
+            json_str = match.group()
+            try:
+                element_info = json.loads(json_str)
+                element = element_info.get("element", "")
+                ref = element_info.get("ref", "")
+            except json.JSONDecodeError:
+                # Fallback to regex if json.loads fails (e.g. unescaped quotes)
+                element_match = re.search(r'"element":\s*"(.*?)"\s*,\s*"ref"', json_str, re.DOTALL)
+                if not element_match:
+                    element_match = re.search(r'"element":\s*"(.*)"', json_str)
+                
+                ref_match = re.search(r'"ref":\s*"(.*?)"', json_str)
+                
+                if element_match:
+                    element = element_match.group(1)
+                if ref_match:
+                    ref = ref_match.group(1)
+        
+        if not ref:
+            # Final fallback: look for anything that looks like a ref
+            ref_fallback = re.search(r'ref=["\']?(e\d+|f\d+e\d+)["\']?', model_text)
+            if ref_fallback:
+                ref = ref_fallback.group(1)
     except Exception:
+        pass
+
+    if not ref:
         return ToolResponse(
             content=[
                 TextBlock(
                     type="text",
-                    text="Failed to parse element/ref from model output.",
+                    text=f"Failed to parse element/ref from model output. Raw output: {model_text}",
                 ),
             ],
             metadata={"success": False},
@@ -101,12 +134,13 @@ async def image_understanding(
     )
     image_data = None
     async for chunk in screenshot_response:
-        if (
-            chunk.content
-            and len(chunk.content) > 1
-            and "data" in chunk.content[1]
-        ):
-            image_data = chunk.content[1]["data"]
+        if chunk.content and len(chunk.content) > 1:
+            block = chunk.content[1]
+            if isinstance(block, dict):
+                if "data" in block:
+                    image_data = block["data"]
+                elif "source" in block and "data" in block["source"]:
+                    image_data = block["source"]["data"]
 
     sys_prompt_task = (
         "You are a web automation expert. "
@@ -142,11 +176,17 @@ async def image_understanding(
         ],
     )
     res_task = await browser_agent.model(prompt_task)
+    answer_text = ""
     if browser_agent.model.stream:
         async for chunk in res_task:
-            answer_text = chunk.content[0]["text"]
+            if chunk.content:
+                for block in chunk.content:
+                    if block["type"] == "text":
+                        answer_text += block.get("text", "")
     else:
-        answer_text = res_task.content[0]["text"]
+        for block in res_task.content:
+            if block["type"] == "text":
+                answer_text += block.get("text", "")
 
     return ToolResponse(
         content=[
