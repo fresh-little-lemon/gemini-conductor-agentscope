@@ -18,6 +18,7 @@ class Theme:
         accent_yellow: Tuple[int, int, int],
         accent_red: Tuple[int, int, int],
         gray: Tuple[int, int, int],
+        border_default: Tuple[int, int, int],
         gradient_stops: List[Tuple[int, int, int]]
     ):
         self.name = name
@@ -27,6 +28,7 @@ class Theme:
         self.accent_yellow = accent_yellow
         self.accent_red = accent_red
         self.gray = gray
+        self.border_default = border_default
         self.gradient_stops = gradient_stops
 
 DARK_THEME = Theme(
@@ -37,6 +39,7 @@ DARK_THEME = Theme(
     accent_yellow=(249, 226, 175),  # #F9E2AF
     accent_red=(243, 139, 168),     # #F38BA8
     gray=(108, 112, 134),           # #6C7086
+    border_default=(46, 46, 64),    # Interpolated from #1E1E2E and #6C7086 (0.2)
     gradient_stops=[(71, 150, 228), (132, 122, 206), (195, 103, 127)] # #4796E4, #847ACE, #C3677F
 )
 
@@ -48,6 +51,7 @@ LIGHT_THEME = Theme(
     accent_yellow=(213, 164, 10),   # #D5A40A
     accent_red=(221, 76, 76),       # #DD4C4C
     gray=(151, 160, 176),           # #97a0b0
+    border_default=(230, 232, 235), # Interpolated from #FAFAFA and #97a0b0 (0.2)
     gradient_stops=[(71, 150, 228), (132, 122, 206), (195, 103, 127)]
 )
 

@@ -305,11 +305,10 @@ class TokenUsageTracker(TokenCounterBase):
         
         # Color Palette (Dynamic from terminal background)
         ACCENT_BLUE = theme.accent_blue
-        ACCENT_PURPLE = theme.accent_purple
         ACCENT_GREEN = theme.accent_green
         ACCENT_YELLOW = theme.accent_yellow
         ACCENT_RED = theme.accent_red
-        GRAY = theme.gray
+        BORDER = theme.border_default
         
         # Gradient stops
         STOPS = theme.gradient_stops
@@ -321,7 +320,7 @@ class TokenUsageTracker(TokenCounterBase):
         GREEN_ANSI = to_ansi(ACCENT_GREEN)
         YELLOW_ANSI = to_ansi(ACCENT_YELLOW)
         RED_ANSI = to_ansi(ACCENT_RED)
-        GRAY_ANSI = to_ansi(GRAY)
+        BORDER_ANSI = to_ansi(BORDER)
         BOLD = "\033[1m"
         RESET = "\033[0m"
         LINE_CHAR = "\u2500"
@@ -378,7 +377,7 @@ class TokenUsageTracker(TokenCounterBase):
             print(f"\n{BOLD}Model Usage{RESET}")
             has_cache = any(data.get('cached_tokens', 0) > 0 for data in self.stats.values())
             
-            w_model, w_reqs, w_input, w_cache, w_output = 30, 6, 15, 15, 15
+            w_model, w_reqs, w_input, w_cache, w_output = 18, 6, 15, 15, 15
             def pad_bold(text: str, width: int, align: str = "left") -> str:
                 if align == "left":
                     return f"{BOLD}{text}{RESET}".ljust(width + 8)
@@ -393,14 +392,14 @@ class TokenUsageTracker(TokenCounterBase):
                 total_width = w_model + w_reqs + w_input + w_output + 3
 
             print(header_str)
-            print(f"{GRAY_ANSI}{LINE_CHAR * total_width}{RESET}")
+            print(f"{BORDER_ANSI}{LINE_CHAR * total_width}{RESET}")
 
             total_input, total_cached = 0, 0
             for model, data in self.stats.items():
                 it, ct, ot, reqs = data.get('input_tokens', 0), data.get('cached_tokens', 0), data.get('output_tokens', 0), data.get('reqs', 0)
                 total_input += it; total_cached += ct
-                if has_cache: print(f"{model:<30} {reqs:>6} {it:>15,} {ct:>15,} {ot:>15,}")
-                else: print(f"{model:<30} {reqs:>6} {it:>15,} {ot:>15,}")
+                if has_cache: print(f"{model:<{w_model}} {reqs:>{w_reqs}} {it:>{w_input},} {ct:>{w_cache},} {ot:>{w_output},}")
+                else: print(f"{model:<{w_model}} {reqs:>{w_reqs}} {it:>{w_input},} {ot:>{w_output},}")
 
             if has_cache and (total_input + total_cached > 0):
                 savings_pct = (total_cached / (total_input + total_cached)) * 100
