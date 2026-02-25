@@ -3,6 +3,7 @@
 import os
 import json
 import sys
+import shutil
 from typing import Optional, TYPE_CHECKING
 from agentscope.mcp import StdIOStatefulClient
 from agentscope._logging import logger
@@ -48,37 +49,71 @@ def create_browser_client(
 
     # Priority for executable_path with existence check: 
     # 1. CLI path (if exists)
-    # 2. System Default (if exists)
-    # 3. Config path (if exists)
-    default_system_path = "/opt/google/chrome/chrome"
+    # 2. Config path (if exists)
+    # 3. System Default (if exists)
     
     final_executable_path = None
     
-    # Check CLI path first
+    # 1. Check CLI path first
     if executable_path:
         if os.path.exists(executable_path):
             final_executable_path = executable_path
         else:
             logger.warning(f"Executable path provided in CLI does not exist: {executable_path}")
-            logger.warning(f"Falling back to check system default...")
 
-    # Check System Default if CLI is not set or invalid
+    # 2. Check Config if CLI is not set or invalid
     if not final_executable_path:
-        if os.path.exists(default_system_path):
-            final_executable_path = default_system_path
+        config_path = config.get("executable_path")
+        if config_path:
+            if os.path.exists(config_path):
+                final_executable_path = config_path
+            else:
+                logger.warning(f"Executable path in config does not exist: {config_path}")
+
+    # 3. Check System Default
+    if not final_executable_path:
+        if sys.platform == "win32":
+            # Common Windows paths for Chrome
+            possible_paths = [
+                os.path.join(
+                    os.environ.get("ProgramFiles", "C:\\Program Files"),
+                    "Google\\Chrome\\Application\\chrome.exe",
+                ),
+                os.path.join(
+                    os.environ.get("ProgramFiles(x86)", "C:\\Program Files (x86)"),
+                    "Google\\Chrome\\Application\\chrome.exe",
+                ),
+                os.path.join(
+                    os.environ.get("LocalAppData", os.path.expanduser("~\\AppData\\Local")),
+                    "Google\\Chrome\\Application\\chrome.exe",
+                ),
+            ]
+            for p in possible_paths:
+                if os.path.exists(p):
+                    final_executable_path = p
+                    break
+        elif sys.platform == "darwin":
+            p = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+            if os.path.exists(p):
+                final_executable_path = p
         else:
-            # Check Config if System Default is not available
-            config_path = config.get("executable_path")
-            if config_path:
-                if os.path.exists(config_path):
-                    final_executable_path = config_path
-                else:
-                    logger.warning(f"Executable path in config does not exist: {config_path}")
+            # Linux default
+            p = "/opt/google/chrome/chrome"
+            if os.path.exists(p):
+                final_executable_path = p
 
     if not final_executable_path:
+        # Construct helpful error message based on platform
+        if sys.platform == "win32":
+            suggested_path = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+        elif sys.platform == "darwin":
+            suggested_path = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        else:
+            suggested_path = "/opt/google/chrome/chrome"
+
         error_msg = (
             f"No valid browser executable found.\n"
-            f"Please ensure Chrome is installed at {default_system_path}, "
+            f"Please ensure Chrome is installed at {suggested_path}, "
             f"or provide a valid --executable-path in CLI, "
             f"or set a valid 'executable_path' in {mcp_config_path}."
         )
@@ -125,9 +160,14 @@ def create_browser_client(
         if "PLAYWRIGHT_MCP_HEADLESS" in env:
             del env["PLAYWRIGHT_MCP_HEADLESS"]
 
+    # On Windows, npx might need to be npx.cmd for subprocess to find it
+    command = "npx"
+    if sys.platform == "win32" and shutil.which("npx.cmd"):
+        command = "npx.cmd"
+
     return StdIOStatefulClient(
         name="playwright-mcp",
-        command="npx",
+        command=command,
         args=client_args,
         env=env,
     ), final_executable_path

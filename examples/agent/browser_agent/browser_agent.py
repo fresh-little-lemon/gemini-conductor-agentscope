@@ -733,7 +733,10 @@ class BrowserAgent(ReActAgent):
                 input={"action": "close", "index": 0},
                 type="tool_use",
             )
-            await self.toolkit.call_tool_function(tool_call)
+            # Ensure the tool call is executed by iterating over the generator
+            gen = await self.toolkit.call_tool_function(tool_call)
+            async for _ in gen:
+                pass
 
         tool_call = ToolUseBlock(
             id=str(uuid.uuid4()),
@@ -741,7 +744,10 @@ class BrowserAgent(ReActAgent):
             name="browser_navigate",
             input={"url": self.start_url},
         )
-        await self.toolkit.call_tool_function(tool_call)
+        # Ensure the navigation is executed by iterating over the generator
+        gen = await self.toolkit.call_tool_function(tool_call)
+        async for _ in gen:
+            pass
 
     async def _get_snapshot_in_text(self) -> list[str]:
         """Capture a text-based snapshot of the current webpage content."""

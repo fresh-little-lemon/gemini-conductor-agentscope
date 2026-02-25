@@ -107,7 +107,8 @@ class LocalFileServer:
         
         # Wait for server to bind and start
         if self._ready.wait(timeout=5.0) and self.httpd:
-            self.hosted_url = f"http://127.0.0.1:{self.port}/{file_name}"
+            from urllib.parse import quote
+            self.hosted_url = f"http://127.0.0.1:{self.port}/{quote(file_name)}"
             print(f"Hosting local file {self.original_uri} at {self.hosted_url}")
         else:
             print(f"Warning: Local server failed to start for {self.original_uri}")
