@@ -40,7 +40,7 @@ class TokenUsageTracker(TokenCounterBase):
     A tracker class to monitor and record token usage, API performance, 
     and tool execution metrics. Logs detailed data to sessions/.
     """
-    def __init__(self) -> None:
+    def __init__(self, session_dir: Optional[str] = None) -> None:
         self.stats: Dict[str, Dict[str, Any]] = {}
         self.total_api_time = 0.0
         self.total_tool_time = 0.0
@@ -53,7 +53,10 @@ class TokenUsageTracker(TokenCounterBase):
         
         # Setup logging directory
         self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        self.session_dir = os.path.join("sessions", self.timestamp)
+        if session_dir:
+            self.session_dir = session_dir
+        else:
+            self.session_dir = os.path.join("sessions", self.timestamp)
         self.log_dir = os.path.join(self.session_dir, "traces")
         os.makedirs(self.log_dir, exist_ok=True)
         self.request_index = 0

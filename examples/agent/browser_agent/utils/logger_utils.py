@@ -1,12 +1,16 @@
-# -*- coding: utf-8 -*-
-"""Logging utilities for recording session logs in JSON format."""
-
 import os
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
+from contextvars import ContextVar
 from agentscope.agent import AgentBase
+
+# Context variable to store the logger for the current task/thread
+session_context: ContextVar[Optional["SessionJSONLogger"]] = ContextVar(
+    "session_context",
+    default=None,
+)
 
 class SessionJSONLogger:
     """
@@ -47,15 +51,16 @@ class SessionJSONLogger:
             import sys
             print(f"Error writing session log: {e}", file=sys.stderr)
 
-class SessionJSONHandler(logging.Handler):
+class GlobalSessionJSONHandler(logging.Handler):
     """
-    A logging handler that updates the SessionJSONLogger.
+    A global logging handler that routes log records to the logger
+    stored in the current context variable.
     """
-    def __init__(self, session_logger: SessionJSONLogger) -> None:
-        super().__init__()
-        self.session_logger = session_logger
-
     def emit(self, record: logging.LogRecord) -> None:
+        logger_inst = session_context.get()
+        if logger_inst is None:
+            return
+
         try:
             log_entry = {
                 "type": "log",
@@ -70,14 +75,16 @@ class SessionJSONHandler(logging.Handler):
             if record.exc_info:
                 log_entry["exception"] = self.formatException(record.exc_info)
             
-            self.session_logger.add_entry(log_entry)
+            logger_inst.add_entry(log_entry)
         except Exception:
             self.handleError(record)
 
+# Singleton list to track if global handler is already added
+_GLOBAL_HANDLER_ADDED = False
+
 def setup_session_logger(session_dir: str, session_id: str, metadata: Dict[str, Any], level: str = "INFO") -> SessionJSONLogger:
     """
-    Sets up JSON logging for the session.
-    Records both standard logger output and agent print messages into a structured JSON.
+    Sets up JSON logging for the session using context-aware routing.
     
     Args:
         session_dir (`str`):
@@ -93,22 +100,32 @@ def setup_session_logger(session_dir: str, session_id: str, metadata: Dict[str, 
         SessionJSONLogger:
             The session logger instance.
     """
+    global _GLOBAL_HANDLER_ADDED
     session_logger = SessionJSONLogger(session_dir, session_id, metadata)
     
-    # 1. Capture standard agentscope logger output
+    # Capture standard agentscope logger output via a global handler once
     from agentscope._logging import logger as as_logger
     
-    json_handler = SessionJSONHandler(session_logger)
-    json_handler.setLevel(level)
-    json_handler.setFormatter(logging.Formatter("%(message)s"))
-    as_logger.addHandler(json_handler)
+    if not _GLOBAL_HANDLER_ADDED:
+        json_handler = GlobalSessionJSONHandler()
+        json_handler.setLevel(level)
+        json_handler.setFormatter(logging.Formatter("%(message)s"))
+        as_logger.addHandler(json_handler)
+        _GLOBAL_HANDLER_ADDED = True
     
-    # 2. Capture agent.print output via class hook
+    # Note: Agent print output should now be captured via instance hooks
+    # in the agents using the following helper:
+    # def agent_print_hook(agent, kwargs, output): ...
+    # agent.register_instance_hook("post_print", "json_log", agent_print_hook)
+
+    return session_logger
+
+def get_agent_print_hook(session_logger: SessionJSONLogger):
+    """Returns a print hook function bound to the given session logger."""
     def agent_print_hook(agent: AgentBase, kwargs: Dict, output: Any) -> None:
         msg = kwargs.get("msg")
         last = kwargs.get("last", True)
         
-        # Only record complete messages to avoid cluttering with chunks
         if msg is None or not last:
             return
             
@@ -121,8 +138,6 @@ def setup_session_logger(session_dir: str, session_id: str, metadata: Dict[str, 
         }
         
         session_logger.add_entry(entry)
-            
-    # Register hook for ALL agents (BrowserAgent, UserAgent, etc.)
-    AgentBase.register_class_hook("post_print", "json_log_recorder", agent_print_hook)
+    
+    return agent_print_hook
 
-    return session_logger
