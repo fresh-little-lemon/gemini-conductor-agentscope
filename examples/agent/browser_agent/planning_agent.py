@@ -239,6 +239,8 @@ class PlanningAgent:
                     task["description"] = ""
                 if task.get("expected_effect") is None:
                     task["expected_effect"] = ""
+                if task.get("value") is not None:
+                    task["value"] = str(task["value"])
 
         try:
             plan = ExplorationPlan.model_validate(plan_dict)

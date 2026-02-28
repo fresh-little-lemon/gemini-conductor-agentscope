@@ -152,4 +152,4 @@ uv.lock
 
 examples/agent/browser_agent/sessions
 examples/agent/browser_agent/html_0210
-examples/agent/browser_agent/configs
+# examples/agent/browser_agent/configs

@@ -1,1 +1,2 @@
 python run_plan_explore.py --html-path html_0210/269.html --headless --record
+python run_plan_explore.py --html-path html_0210/269.html --headless --record --model-config configs/model_config_server.json

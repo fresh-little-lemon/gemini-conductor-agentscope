@@ -1,9 +1,16 @@
 {
     "model_type": "openai",
-    "model_name": "qwen3-vl",
+    "model_name": "qwen3.5-122b-a10b",
     "api_key": "EMPTY",
     "client_kwargs": {
-        "base_url": "http://0.0.0.0:8081/v1"
+        "base_url": "http://0.0.0.0:8001/v1"
     },
-    "stream": false
+    "stream": false,
+    "generate_kwargs": {
+        "extra_body": {
+            "chat_template_kwargs": {
+                "enable_thinking": false
+            }
+        }
+    }
 }
