@@ -1,10 +1,10 @@
 # Implementation Plan: Plan+Explore Collaborative WebUI
 
 ## Phase 1: Backend Foundation & Event Streaming
-- [ ] Task: Implement Central Event System
+- [x] Task: Implement Central Event System
     - [ ] Write unit tests for the event bus and emitter logic
     - [ ] Implement the `EventSink` and `ControlHub` in the orchestration layer
-- [ ] Task: Set up FastAPI WebSocket Service
+- [x] Task: Set up FastAPI WebSocket Service
     - [ ] Write tests for real-time message streaming via WebSockets
     - [ ] Implement the FastAPI server and WebSocket endpoint for `RunEvent` broadcasting
 - [ ] Task: Conductor - User Manual Verification 'Backend Foundation & Event Streaming' (Protocol in workflow.md)

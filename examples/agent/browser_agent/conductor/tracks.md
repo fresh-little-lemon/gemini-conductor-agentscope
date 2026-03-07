@@ -9,5 +9,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Implement the Plan+Explore Collaborative WebUI**
+- [~] **Track: Implement the Plan+Explore Collaborative WebUI**
   *Link: [./tracks/plan_explore_webui_20250212_1/](./tracks/plan_explore_webui_20250212_1/)*
