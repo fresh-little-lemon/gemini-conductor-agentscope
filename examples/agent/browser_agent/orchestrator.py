@@ -14,7 +14,10 @@ import json
 import asyncio
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
+
+from web.event_bus import EventSink
+from web.control_hub import ControlHub
 
 from agentscope._logging import logger
 
@@ -104,11 +107,20 @@ class Orchestrator:
 
         return "\n".join(lines)
 
-    async def run(self, html_path: str) -> dict:
+    async def run(
+        self,
+        html_path: str,
+        run_id: str | None = None,
+        event_sink: EventSink | None = None,
+        control_hub: ControlHub | None = None,
+    ) -> dict:
         """Execute the full orchestration pipeline.
 
         Args:
             html_path: Path to the HTML file to analyze and test.
+            run_id: Optional ID for this run.
+            event_sink: Optional EventSink for emitting events.
+            control_hub: Optional ControlHub for controlling agents.
 
         Returns:
             A dictionary containing the plan and all exploration results.
@@ -117,6 +129,10 @@ class Orchestrator:
         logger.info("=" * 60)
         logger.info("PHASE 1: PLANNING")
         logger.info("=" * 60)
+
+        if event_sink:
+            from web.event_types import RunEvent
+            await event_sink.emit(RunEvent(type="run.stage", runId=run_id, payload={"stage": "planning"}))
 
         planning_agent = PlanningAgent(
             model_config=self.model_config,
@@ -136,6 +152,10 @@ class Orchestrator:
         logger.info("PHASE 2: DISPATCHING %d SUBAGENTS", len(plan.task_groups))
         logger.info("=" * 60)
 
+        if event_sink:
+            from web.event_types import RunEvent
+            await event_sink.emit(RunEvent(type="run.stage", runId=run_id, payload={"stage": "dispatching"}))
+
         # Prepare the start URL — serve local files via HTTP
         start_url, is_local = sanitize_start_url(html_path)
         local_server = None
@@ -154,6 +174,9 @@ class Orchestrator:
                 plan=plan,
                 start_url=start_url,
                 exploration_dir=exploration_dir,
+                run_id=run_id,
+                event_sink=event_sink,
+                control_hub=control_hub,
             )
         finally:
             # Shutdown local server after all subagents are done
@@ -165,6 +188,10 @@ class Orchestrator:
         logger.info("=" * 60)
         logger.info("PHASE 3: AGGREGATION")
         logger.info("=" * 60)
+
+        if event_sink:
+            from web.event_types import RunEvent
+            await event_sink.emit(RunEvent(type="run.stage", runId=run_id, payload={"stage": "aggregation"}))
 
         report = self._generate_report(plan, results, session_dir)
 
@@ -185,6 +212,9 @@ class Orchestrator:
         plan: ExplorationPlan,
         start_url: str,
         exploration_dir: str,
+        run_id: str | None = None,
+        event_sink: EventSink | None = None,
+        control_hub: ControlHub | None = None,
     ) -> list[ExplorationResult]:
         """Dispatch ExploringAgent instances with concurrency control.
 
@@ -192,6 +222,9 @@ class Orchestrator:
             plan: The exploration plan with task groups.
             start_url: URL for the browser to navigate to.
             exploration_dir: Base directory for subagent work directories.
+            run_id: Optional ID for this run.
+            event_sink: Optional EventSink for emitting events.
+            control_hub: Optional ControlHub for controlling agents.
 
         Returns:
             List of ExplorationResult from all subagents.
@@ -224,6 +257,9 @@ class Orchestrator:
                     record_video=self.record_video,
                     executable_path=self.executable_path,
                     max_iters=self.max_iters,
+                    event_sink=event_sink,
+                    control_hub=control_hub,
+                    run_id=run_id,
                 )
 
         # Launch all groups concurrently (bounded by semaphore)
