@@ -1,0 +1,8 @@
+{
+  "track_id": "realtime_chat_webui_20250212",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2025-02-12T10:00:00Z",
+  "updated_at": "2025-02-12T10:00:00Z",
+  "description": "Implement a real-time chat interface in the WebUI for monitoring agent automation and underlying API messages"
+}
