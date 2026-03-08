@@ -1,10 +1,22 @@
 import asyncio
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Any
 
 class ControlHub:
     """Manages agent states like pausing and resuming."""
     def __init__(self) -> None:
         self.paused_agents: Dict[str, asyncio.Event] = {}
+        self.ops_log: Dict[str, List[Dict[str, Any]]] = {}
+
+    async def log_operation(self, agent_id: str, op: Dict[str, Any]) -> None:
+        """Log a manual operation for an agent."""
+        if agent_id not in self.ops_log:
+            self.ops_log[agent_id] = []
+        self.ops_log[agent_id].append(op)
+
+    async def get_and_clear_ops(self, agent_id: str) -> List[Dict[str, Any]]:
+        """Get and clear the manual operations log for an agent."""
+        ops = self.ops_log.pop(agent_id, [])
+        return ops
 
     async def pause(self, agent_id: str) -> None:
         """Pause a specific agent."""
@@ -41,3 +53,9 @@ class AgentControlGate:
         """Wait if the hub says this agent is paused."""
         if self.hub:
             await self.hub.wait_if_paused(self.agent_id)
+
+    async def get_and_clear_ops(self) -> List[Dict[str, Any]]:
+        """Get and clear the manual operations log."""
+        if self.hub:
+            return await self.hub.get_and_clear_ops(self.agent_id)
+        return []

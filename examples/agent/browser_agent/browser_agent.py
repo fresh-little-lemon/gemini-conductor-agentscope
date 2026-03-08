@@ -273,6 +273,8 @@ class BrowserAgent(ReActAgent):
         reply_msg = None
         for iter_n in range(self.max_iters):
             # Check for pause
+            # Check for manual operations to inject
+            await self._check_and_inject_manual_ops()
             if getattr(self, "control_gate", None):
                 await self.control_gate.wait_if_paused()
             self.iter_n = iter_n + 1
@@ -1235,3 +1237,29 @@ class BrowserAgent(ReActAgent):
             or "gpt-5" in model_name
             or "glm-4.6v" in model_name
         )
+
+    async def _check_and_inject_manual_ops(self) -> None:
+        """Retrieve manual operations from control gate and inject into memory."""
+        if not getattr(self, "control_gate", None):
+            return
+            
+        ops = await self.control_gate.get_and_clear_ops()
+        if not ops:
+            return
+            
+        # Summarize ops
+        summary = "Human manual intervention occurred during pause:\n"
+        for op in ops:
+            action = op.get("action")
+            if action in ["mousedown", "mouseup", "mousemove"]:
+                summary += f"- Mouse {action} at ({op.get('x')}, {op.get('y')})\n"
+            elif action in ["keydown", "keyup"]:
+                summary += f"- Key {action}: {op.get('key')}\n"
+        
+        msg_hint = Msg(
+            "user",
+            f"<system-hint>{summary}</system-hint>",
+            "user",
+        )
+        await self.memory.add(msg_hint)
+        await self.print(msg_hint)

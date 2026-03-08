@@ -1,35 +1,58 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useEffect } from 'react';
+import Sidebar from './components/Sidebar';
+import AgentTabs from './components/AgentTabs';
+import LiveViewer from './components/LiveViewer';
+import ChatInterface from './components/ChatInterface';
+import RightSidebar from './components/RightSidebar';
+import { useStore } from './store/useStore';
 
-function App() {
-  const [count, setCount] = useState(0)
+const App: React.FC = () => {
+  const { currentStage, activeTab, handleEvent } = useStore();
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/events');
+    ws.onmessage = (event) => {
+      const runEvent = JSON.parse(event.data);
+      handleEvent(runEvent);
+    };
+    return () => ws.close();
+  }, [handleEvent]);
+
+  const isExploreStage = currentStage === 'dispatching' || currentStage === 'done';
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div className="flex h-screen w-full overflow-hidden bg-bgMain">
+      {/* Left Sidebar - Session History */}
+      <div className={`layout-transition ${isExploreStage ? 'w-0 opacity-0 invisible' : 'w-64'}`}>
+        <Sidebar />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
 
-export default App
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <AgentTabs />
+        
+        <div className="flex-1 flex overflow-hidden">
+          {/* Center Area: Viewer or Plan Chat */}
+          <div className="flex-1 relative border-r border-borderSubtle">
+            {activeTab === 'plan' ? (
+              <div className="h-full flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4">
+                   <ChatInterface filterType="system" />
+                </div>
+              </div>
+            ) : (
+              <LiveViewer tabId={activeTab} />
+            )}
+          </div>
+
+          {/* Right Panel: Workspace or Sub-agent Chat */}
+          <div className="w-96 flex flex-col bg-white">
+             <RightSidebar />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default App;

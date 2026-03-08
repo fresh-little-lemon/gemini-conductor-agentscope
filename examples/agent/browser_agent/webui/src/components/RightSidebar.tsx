@@ -1,77 +1,72 @@
-import type { AppMode, RightTab } from '../App';
+import React, { useState } from 'react';
+import { useStore } from '../store/useStore';
+import { Briefcase, MessageSquare, ListTodo, FileBox } from 'lucide-react';
 import ChatInterface from './ChatInterface';
-import InfoPanel from './InfoPanel';
-import { cn } from '../lib/utils';
-import { MessageSquare } from 'lucide-react';
 
-interface RightSidebarProps {
-    appMode: AppMode;
-    activeRightTab: RightTab;
-    setActiveRightTab: (tab: RightTab) => void;
-}
+const RightSidebar: React.FC = () => {
+  const [activePanel, setActivePanel] = useState<'workspace' | 'chat'>('workspace');
+  const { artifacts } = useStore();
 
-export default function RightSidebar({
-    activeRightTab,
-    setActiveRightTab
-}: RightSidebarProps) {
-
-    return (
-        <div className="flex flex-col h-full">
-            {/* Tab Switcher (Claude style) */}
-            <div className="px-4 mb-4">
-                <div className="flex bg-gray-100 p-1 rounded-lg">
-                    <button
-                        onClick={() => setActiveRightTab('chat')}
-                        className={cn(
-                            "flex-1 flex items-center justify-center gap-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all",
-                            activeRightTab === 'chat' ? "bg-white shadow-sm text-textMain" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        <MessageSquare size={14} />
-                        Chat
-                    </button>
-                    <button
-                        onClick={() => setActiveRightTab('workspace')}
-                        className={cn(
-                            "flex-1 flex items-center justify-center gap-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all",
-                            activeRightTab === 'workspace' ? "bg-white shadow-sm text-textMain" : "text-gray-500 hover:text-gray-700"
-                        )}
-                    >
-                        <LayoutWorkspace size={14} />
-                        Workspace
-                    </button>
-                </div>
-            </div>
-
-            <div className="flex-1 overflow-hidden">
-                {activeRightTab === 'chat' ? (
-                    <ChatInterface isSidebar={true} />
-                ) : (
-                    <InfoPanel />
-                )}
-            </div>
-        </div>
-    );
-}
-
-// Simple Layout icon fallback
-function LayoutWorkspace({ size, className }: { size: number, className?: string }) {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width={size}
-            height={size}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={className}
+  return (
+    <div className="flex flex-col h-full border-l border-borderSubtle">
+      {/* Switch Bar */}
+      <div className="flex border-b border-borderSubtle bg-gray-50">
+        <button 
+          onClick={() => setActivePanel('workspace')}
+          className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors ${activePanel === 'workspace' ? 'bg-white text-accentPrimary border-b-2 border-b-accentPrimary' : 'text-textMuted hover:bg-gray-100'}`}
         >
-            <rect width="18" height="18" x="3" y="3" rx="2" />
-            <path d="M3 9h18" />
-            <path d="M9 21V9" />
-        </svg>
-    );
-}
+          <Briefcase className="w-4 h-4" />
+          Workspace
+        </button>
+        <button 
+          onClick={() => setActivePanel('chat')}
+          className={`flex-1 py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors ${activePanel === 'chat' ? 'bg-white text-accentPrimary border-b-2 border-b-accentPrimary' : 'text-textMuted hover:bg-gray-100'}`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          Chat
+        </button>
+      </div>
+
+      {/* Panel Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {activePanel === 'workspace' ? (
+          <div className="space-y-6">
+            {/* Progress Section */}
+            <section>
+              <h3 className="text-xs font-bold text-textMuted uppercase mb-3 flex items-center gap-2">
+                <ListTodo className="w-3 h-3" />
+                Current Progress
+              </h3>
+              <div className="space-y-2">
+                 <div className="p-3 bg-blue-50 border border-blue-100 rounded-md text-sm text-blue-800">
+                    Agent is currently exploring the page...
+                 </div>
+              </div>
+            </section>
+
+            {/* Artifacts Section */}
+            <section>
+              <h3 className="text-xs font-bold text-textMuted uppercase mb-3 flex items-center gap-2">
+                <FileBox className="w-3 h-3" />
+                Artifacts
+              </h3>
+              <div className="space-y-2">
+                {artifacts.length > 0 ? artifacts.map(art => (
+                  <div key={art.id} className="p-2 border border-borderSubtle rounded-md hover:bg-gray-50 cursor-pointer text-sm">
+                    {art.name}
+                  </div>
+                )) : (
+                  <div className="text-xs text-textMuted italic">No artifacts generated yet.</div>
+                )}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <ChatInterface />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default RightSidebar;

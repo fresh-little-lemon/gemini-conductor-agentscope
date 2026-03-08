@@ -40,13 +40,13 @@
 - [ ] Task: Conductor - User Manual Verification 'Core UI Components' (Protocol in workflow.md)
 
 ## Phase 5: Interaction & Layout Logic
-- [ ] Task: Implement Animated Layout Switching
+- [x] Task: Implement Animated Layout Switching
     - [ ] Write tests for layout migration triggers (Plan <-> Explore)
     - [ ] Implement the smooth transition logic between stages
-- [ ] Task: Implement Manual Takeover & Lock Logic
+- [x] Task: Implement Manual Takeover & Lock Logic
     - [ ] Write tests for the 30s auto-relock timeout and manual unlock
     - [ ] Implement the lock/unlock UI controls and background timers
-- [ ] Task: Implement Operation Logging & Context Injection
+- [x] Task: Implement Operation Logging & Context Injection
     - [ ] Write tests for granular event logging during manual takeover
     - [ ] Implement the logic to inject logged summaries back into the agent context
 - [ ] Task: Conductor - User Manual Verification 'Interaction & Layout Logic' (Protocol in workflow.md)
