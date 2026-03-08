@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-main: #F8F9FA;
+  --bg-panel: #FFFFFF;
+  --text-main: #1A1A1A;
+  --text-muted: #6B7280;
+  --border-subtle: #E5E7EB;
+  --accent-primary: #2563EB;
+}
+
+@layer base {
+  body {
+    @apply bg-bgMain text-textMain antialiased;
+    margin: 0;
+    min-height: 100vh;
+  }
+}
+
+/* Layout Transition Animations */
+.layout-transition {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.plan-layout {
+  /* Specific styles for plan stage */
+}
+
+.explore-layout {
+  /* Specific styles for explore stage */
+}
+
+/* Chrome-style Tab Styles */
+.chrome-tab {
+  @apply relative flex items-center px-4 py-2 text-sm font-medium cursor-pointer border-r border-borderSubtle bg-gray-100 hover:bg-gray-200 transition-colors;
+}
+
+.chrome-tab.active {
+  @apply bg-white border-b-2 border-b-accentPrimary text-accentPrimary;
+}
