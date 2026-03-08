@@ -65,3 +65,6 @@
     - [ ] Perform a full run from Plan to Explore, verifying layout transitions and monitoring
     - [ ] Verify manual takeover, operation injection, and session replay
 - [ ] Task: Conductor - User Manual Verification 'Final Integration & Acceptance' (Protocol in workflow.md)
+
+## Phase: Review Fixes
+- [x] Task: Apply review suggestions (fix build errors in webui) f87c5ba
