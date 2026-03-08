@@ -55,11 +55,7 @@ export default function CenterArea({ onSwitchMode }: CenterAreaProps) {
             {/* Content Area */}
             <div className="flex-1 relative overflow-hidden">
                 {activeTab === 'plan' ? (
-                    <div className="h-full flex flex-col items-center justify-center p-4">
-                        <div className="w-full max-w-4xl h-full">
-                            <ChatInterface filterType="system" />
-                        </div>
-                    </div>
+                    <ChatInterface filterType="system" />
                 ) : (
                     <BrowserView />
                 )}

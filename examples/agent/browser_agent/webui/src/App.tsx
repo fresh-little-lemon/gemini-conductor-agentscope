@@ -35,11 +35,7 @@ const App: React.FC = () => {
           {/* Center Area: Viewer or Plan Chat */}
           <div className="flex-1 relative border-r border-borderSubtle">
             {activeTab === 'plan' ? (
-              <div className="h-full flex flex-col">
-                <div className="flex-1 overflow-y-auto p-4">
-                   <ChatInterface filterType="system" />
-                </div>
-              </div>
+              <ChatInterface filterType="system" />
             ) : (
               <LiveViewer tabId={activeTab} />
             )}
