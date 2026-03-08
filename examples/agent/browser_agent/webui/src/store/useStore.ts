@@ -27,6 +27,7 @@ interface AppState {
   messages: Message[];
   artifacts: Artifact[];
   activeTab: string; // 'plan' or agent_id
+  tabs: string[];
   frames: Record<string, string>; // tabId -> base64 frame
   lockState: Record<string, boolean>; // tabId -> isLocked
   
@@ -42,6 +43,7 @@ export const useStore = create<AppState>((set) => ({
   messages: [],
   artifacts: [],
   activeTab: 'plan',
+  tabs: ['plan'],
   frames: {},
   lockState: {},
 
@@ -53,7 +55,19 @@ export const useStore = create<AppState>((set) => ({
 
     switch (type) {
       case 'run.stage':
-        set({ currentStage: payload.stage });
+        if (payload.stage === 'planning') {
+          set({
+            currentStage: payload.stage,
+            tabs: ['plan'],
+            activeTab: 'plan',
+            messages: [],
+            artifacts: [],
+            frames: {},
+            lockState: {}
+          });
+        } else {
+          set({ currentStage: payload.stage });
+        }
         break;
       
       case 'plan.chat.chunk':
@@ -75,12 +89,19 @@ export const useStore = create<AppState>((set) => ({
         break;
 
       case 'viewer.frame':
-        set((state) => ({
-          frames: {
-            ...state.frames,
-            [payload.tabId]: payload.frame
-          }
-        }));
+        set((state) => {
+          const tabId = payload.tabId || 'default';
+          const newTabs = state.tabs.includes(tabId) 
+            ? state.tabs 
+            : [...state.tabs, tabId];
+          return {
+            tabs: newTabs,
+            frames: {
+              ...state.frames,
+              [tabId]: payload.frame
+            }
+          };
+        });
         break;
 
       case 'viewer.lock_state':

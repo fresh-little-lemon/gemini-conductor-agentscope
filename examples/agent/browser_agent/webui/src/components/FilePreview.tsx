@@ -1,46 +1,50 @@
-import { X, FileText, Download } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import React from 'react';
+import { FileText, Image as ImageIcon, Video, FileCode } from 'lucide-react';
 
 interface FilePreviewProps {
-    path: string;
-    name: string;
-    onClose: () => void;
+  path: string;
+  type: string;
+  name: string;
 }
 
-export default function FilePreview({ path, name, onClose }: FilePreviewProps) {
-    const [content, setContent] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+const FilePreview: React.FC<FilePreviewProps> = ({ path, type, name }) => {
+  const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(type.toLowerCase());
+  const isVideo = ['mp4', 'webm'].includes(type.toLowerCase());
+  const isMarkdown = type.toLowerCase() === 'md';
 
-    useEffect(() => {
-        setLoading(true);
-        fetch(`/api/file/preview?path=${encodeURIComponent(path)}`)
-            .then(res => res.json())
-            .then(data => {
-                setContent(data.content);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error(err);
-                setLoading(false);
-            });
-    }, [path]);
+  return (
+    <div className="w-full h-full bg-white flex flex-col">
+      <div className="p-2 border-b border-borderSubtle bg-gray-50 flex items-center gap-2 text-sm text-textMuted">
+        {isImage && <ImageIcon className="w-4 h-4" />}
+        {isVideo && <Video className="w-4 h-4" />}
+        {isMarkdown && <FileText className="w-4 h-4" />}
+        {!isImage && !isVideo && !isMarkdown && <FileCode className="w-4 h-4" />}
+        <span>{name}</span>
+      </div>
+      <div className="flex-1 overflow-auto p-4">
+        {isImage && (
+          <div className="flex items-center justify-center h-full">
+            <img src={`http://localhost:8000/files?path=${encodeURIComponent(path)}`} alt={name} className="max-w-full max-h-full shadow-md" />
+          </div>
+        )}
+        {isVideo && (
+          <div className="flex items-center justify-center h-full">
+            <video controls className="max-w-full max-h-full shadow-md">
+              <source src={`http://localhost:8000/files?path=${encodeURIComponent(path)}`} type={`video/${type}`} />
+            </video>
+          </div>
+        )}
+        {(isMarkdown || !isImage && !isVideo) && (
+          <div className="prose max-w-none">
+             {/* In a real implementation, we would fetch and render markdown/text here */}
+             <div className="p-4 bg-gray-100 rounded border border-dashed border-gray-300 text-center text-textMuted">
+                File content preview for <code>{path}</code>
+             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
-    return (
-        <div className="h-full flex flex-col bg-white">
-            <div className="flex items-center gap-2 px-4 py-2 border-b border-borderSubtle bg-gray-50">
-                <FileText size={16} className="text-gray-400" />
-                <span className="text-sm font-medium text-gray-700 truncate">{name}</span>
-                <button onClick={onClose} className="ml-auto p-1 hover:bg-gray-200 rounded text-gray-400">
-                    <X size={16} />
-                </button>
-            </div>
-            <div className="flex-1 overflow-auto p-4 font-mono text-xs whitespace-pre-wrap bg-white">
-                {loading ? (
-                    <div className="flex items-center justify-center h-full text-gray-400">Loading...</div>
-                ) : (
-                    content || "No content or failed to load."
-                )}
-            </div>
-        </div>
-    );
-}
+export default FilePreview;

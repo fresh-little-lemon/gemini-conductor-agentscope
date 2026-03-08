@@ -19,22 +19,22 @@
 - [ ] Task: Conductor - User Manual Verification 'Agent Control & CDP Bridge' (Protocol in workflow.md)
 
 ## Phase 3: Frontend Infrastructure & Global State
-- [ ] Task: Scaffold React/Vite Project
+- [x] Task: Scaffold React/Vite Project
     - [ ] Set up the UI project structure with TypeScript and Tailwind CSS
     - [ ] Implement the core theme tokens and CSS animations for layout switching
-- [ ] Task: Implement Global State & Event Reducer
+- [x] Task: Implement Global State & Event Reducer
     - [ ] Write unit tests for state transitions based on `RunEvent` types
     - [ ] Implement the Zustand/Redux store and event handling logic
 - [ ] Task: Conductor - User Manual Verification 'Frontend Infrastructure & Global State' (Protocol in workflow.md)
 
 ## Phase 4: Core UI Components
-- [ ] Task: Implement Session Sidebar & History
+- [x] Task: Implement Session Sidebar & History
     - [ ] Write tests for session indexing and listing
     - [ ] Implement `SessionSidebar` with local persistence integration
-- [ ] Task: Implement Chrome-style Agent Tabs
+- [x] Task: Implement Chrome-style Agent Tabs
     - [ ] Write tests for dynamic tab creation and switching
     - [ ] Implement the horizontal `AgentTabs` component
-- [ ] Task: Implement LiveViewer & File Preview
+- [x] Task: Implement LiveViewer & File Preview
     - [ ] Write tests for CDP frame rendering and read-only file previews
     - [ ] Implement `LiveViewer` and the multi-format file previewer
 - [ ] Task: Conductor - User Manual Verification 'Core UI Components' (Protocol in workflow.md)
