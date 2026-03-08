@@ -68,3 +68,4 @@
 
 ## Phase: Review Fixes
 - [x] Task: Apply review suggestions (fix build errors in webui) f87c5ba
+- [x] Task: Implement interactive message input in ChatInterface d1a862a
