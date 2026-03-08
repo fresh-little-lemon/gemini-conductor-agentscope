@@ -52,10 +52,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Interaction & Layout Logic' (Protocol in workflow.md)
 
 ## Phase 6: Persistence & Replay Mode
-- [ ] Task: Implement Session Persistence & Indexer
+- [x] Task: Implement Session Persistence & Indexer
     - [ ] Write tests for session IO and aggregation from `sessions/`
     - [ ] Implement the `SessionIndexer` service
-- [ ] Task: Implement Static & Interactive Replay
+- [x] Task: Implement Static & Interactive Replay
     - [ ] Write tests for step-by-step log playback
     - [ ] Implement the Replay mode UI and settings-based mode switching
 - [ ] Task: Conductor - User Manual Verification 'Persistence & Replay Mode' (Protocol in workflow.md)

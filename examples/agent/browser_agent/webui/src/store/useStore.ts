@@ -35,6 +35,7 @@ interface AppState {
   handleEvent: (event: RunEvent) => void;
   setRunId: (id: string | null) => void;
   setActiveTab: (id: string) => void;
+  loadSession: (sessionId: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -49,6 +50,31 @@ export const useStore = create<AppState>((set) => ({
 
   setRunId: (id) => set({ runId: id }),
   setActiveTab: (id) => set({ activeTab: id }),
+
+  loadSession: async (sessionId) => {
+    try {
+      const res = await fetch(`http://localhost:8000/sessions/${sessionId}`);
+      const data = await res.json();
+      
+      const sessionMessages: Message[] = data.results.map((r: any) => ({
+        id: Math.random().toString(36).substr(2, 9),
+        type: 'system',
+        content: `Group ${r.group_id}: ${r.result}`,
+        ts: new Date().toISOString()
+      }));
+
+      set({
+        runId: sessionId,
+        currentStage: 'done',
+        messages: sessionMessages,
+        artifacts: data.artifacts,
+        activeTab: 'plan',
+        tabs: ['plan']
+      });
+    } catch (err) {
+      console.error('Failed to load session:', err);
+    }
+  },
 
   handleEvent: (event) => {
     const { type, payload } = event;

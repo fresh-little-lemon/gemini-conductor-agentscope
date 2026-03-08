@@ -12,7 +12,7 @@ interface Session {
 
 const Sidebar: React.FC = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
-  const { setRunId } = useStore();
+  const { loadSession } = useStore();
 
   useEffect(() => {
     fetch('http://localhost:8000/sessions')
@@ -33,7 +33,7 @@ const Sidebar: React.FC = () => {
         {sessions.map(session => (
           <div 
             key={session.id}
-            onClick={() => setRunId(session.id)}
+            onClick={() => loadSession(session.id)}
             className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 transition-colors"
           >
             <div className="text-sm font-medium truncate">{session.id}</div>

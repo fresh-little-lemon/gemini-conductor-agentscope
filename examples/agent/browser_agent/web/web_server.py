@@ -75,3 +75,26 @@ async def health_check():
 @app.get("/sessions")
 async def list_sessions():
     return indexer.list_sessions()
+
+@app.get("/sessions/{session_id}")
+async def get_session(session_id: str):
+    details = indexer.get_session_details(session_id)
+    if not details:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Session not found")
+    return details
+
+@app.get("/files")
+async def get_file(path: str):
+    from fastapi.responses import FileResponse
+    from fastapi import HTTPException
+    
+    # Security: Ensure path is within SESSIONS_DIR
+    abs_path = os.path.abspath(path)
+    if not abs_path.startswith(SESSIONS_DIR):
+        raise HTTPException(status_code=403, detail="Access denied")
+        
+    if not os.path.exists(abs_path):
+        raise HTTPException(status_code=404, detail="File not found")
+        
+    return FileResponse(abs_path)
