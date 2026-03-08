@@ -6,6 +6,7 @@ To provide a robust, production-ready template for a Browser-Use agent pipeline 
 ## Core Features
 - **Autonomous Web Navigation:** Robust interaction with dynamic web pages using Playwright commands via MCP.
 - **Advanced Task Automation:** Execution of complex sequences of web operations to explore and validate educational interfaces.
+- **Collaborative WebUI:** Real-time monitoring and control interface with animated layout switching and manual takeover capabilities.
 - **High-Fidelity Data Capture:** Recording of high-fidelity video streams and detailed interaction logs (action-state pairs) for synthesizing high-quality training data for reward models.
 - **Automated Quality Assurance:** Identifying visual artifacts, broken scripts, and UI inconsistencies in generated code through autonomous exploration.
 - **Robustness & Scalability:** A modular template designed to handle diverse web environments and scale across multiple evaluation tasks.

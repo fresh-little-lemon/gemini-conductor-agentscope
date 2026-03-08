@@ -7,12 +7,15 @@
 ## Frameworks & Libraries
 - **AgentScope:** The primary agent framework for building and orchestrating the BrowserAgent.
 - **Playwright:** Provides the underlying browser automation capabilities.
+- **FastAPI:** Orchestration layer for managing agent runs and event streaming.
 - **Node.js:** Runtime for the Playwright MCP server and frontend build tools.
 - **React:** Framework for the project's web interface (WebUI).
+- **Zustand:** Lightweight state management for the React frontend.
 
 ## Key Technologies & Protocols
 - **Model Context Protocol (MCP):** Standardizes the interaction between the agent and the browser tools.
 - **OpenAI-Compatible APIs:** Primary interface for LLM interaction (e.g., DashScope, OpenAI).
+- **WebSockets:** Bidirectional real-time streaming of events and CDP frames.
 - **Web Automation & Interaction:** Advanced techniques for navigating and interacting with complex web interfaces.
 - **Multimodal Data Capture:** Tools for recording video trajectories and granular interaction logs for reward model training.
 
