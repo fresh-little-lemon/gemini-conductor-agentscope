@@ -1,12 +1,15 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 import asyncio
 import json
 import os
+import uuid
 from .event_bus import EventSink
 from .event_types import RunEvent
 from .session_index import SessionIndexer
 from .control_hub import ControlHub
+from orchestrator import Orchestrator
 
 app = FastAPI()
 
@@ -20,7 +23,6 @@ app.add_middleware(
 
 event_sink = EventSink()
 control_hub = ControlHub()
-# Use absolute path for sessions directory
 SESSIONS_DIR = os.path.join(os.getcwd(), "sessions")
 indexer = SessionIndexer(SESSIONS_DIR)
 
@@ -68,6 +70,27 @@ async def websocket_control(websocket: WebSocket):
     except Exception:
         await websocket.close()
 
+@app.post("/run")
+async def start_run(background_tasks: BackgroundTasks, html_path: str = "html_0210/100.html"):
+    run_id = f"run_{uuid.uuid4().hex[:8]}"
+    
+    # Run orchestrator in background
+    async def run_orchestrator():
+        # We need to use the absolute path for html_path
+        abs_html_path = os.path.abspath(html_path)
+        
+        orch = Orchestrator()
+        await orch.run(
+            html_path=abs_html_path,
+            run_id=run_id,
+            event_sink=event_sink,
+            control_hub=control_hub
+        )
+        await event_sink.emit(RunEvent(type="run.done", runId=run_id))
+
+    background_tasks.add_task(run_orchestrator)
+    return {"runId": run_id}
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
@@ -80,21 +103,14 @@ async def list_sessions():
 async def get_session(session_id: str):
     details = indexer.get_session_details(session_id)
     if not details:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Session not found")
     return details
 
 @app.get("/files")
 async def get_file(path: str):
-    from fastapi.responses import FileResponse
-    from fastapi import HTTPException
-    
-    # Security: Ensure path is within SESSIONS_DIR
     abs_path = os.path.abspath(path)
-    if not abs_path.startswith(SESSIONS_DIR):
+    if not abs_path.startswith(os.path.abspath(SESSIONS_DIR)):
         raise HTTPException(status_code=403, detail="Access denied")
-        
     if not os.path.exists(abs_path):
         raise HTTPException(status_code=404, detail="File not found")
-        
     return FileResponse(abs_path)

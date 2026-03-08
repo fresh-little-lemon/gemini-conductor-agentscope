@@ -61,7 +61,7 @@
 - [ ] Task: Conductor - User Manual Verification 'Persistence & Replay Mode' (Protocol in workflow.md)
 
 ## Phase 7: Final Integration & Acceptance
-- [ ] Task: End-to-End Acceptance Testing
+- [x] Task: End-to-End Acceptance Testing
     - [ ] Perform a full run from Plan to Explore, verifying layout transitions and monitoring
     - [ ] Verify manual takeover, operation injection, and session replay
 - [ ] Task: Conductor - User Manual Verification 'Final Integration & Acceptance' (Protocol in workflow.md)
