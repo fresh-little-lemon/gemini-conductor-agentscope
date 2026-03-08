@@ -42,6 +42,9 @@ class ExplorationResult(BaseModel):
     )
 
 
+from web.event_bus import EventSink
+from web.control_hub import ControlHub, AgentControlGate
+
 async def create_and_run_exploring_agent(
     group_id: int,
     group_name: str,
@@ -54,6 +57,9 @@ async def create_and_run_exploring_agent(
     record_video: bool = False,
     executable_path: Optional[str] = None,
     max_iters: int = 30,
+    event_sink: EventSink | None = None,
+    control_hub: ControlHub | None = None,
+    run_id: str | None = None,
 ) -> ExplorationResult:
     """Create and run a single exploring agent for a task group.
 
@@ -136,6 +142,10 @@ async def create_and_run_exploring_agent(
             # Track toolkit
             toolkit = tracker.track_toolkit(toolkit)
 
+            # Create control gate
+            agent_id = f"{run_id or 'run'}_agent_{group_id}"
+            control_gate = AgentControlGate(control_hub, agent_id)
+
             # Create browser agent
             agent = BrowserAgent(
                 name=f"Explorer-{group_id}",
@@ -146,6 +156,7 @@ async def create_and_run_exploring_agent(
                 max_iters=max_iters,
                 start_url=actual_url,
                 token_counter=tracker,
+                control_gate=control_gate,
             )
 
             # Attach video manager

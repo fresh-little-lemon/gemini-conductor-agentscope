@@ -18,7 +18,8 @@ def create_browser_client(
     height: int = 720,
     isolated: bool = True,
     executable_path: Optional[str] = None,
-    mcp_config_path: str = "configs/mcp_config.json"
+    mcp_config_path: str = "configs/mcp_config.json",
+    cdp_endpoint: Optional[str] = None,
 ) -> tuple[StdIOStatefulClient, str]:
     """
     Create a browser client with the specified configurations.
@@ -32,6 +33,7 @@ def create_browser_client(
                          Default is True.
         executable_path (str, optional): Path to the browser executable.
         mcp_config_path (str): Path to the MCP configuration file.
+        cdp_endpoint (str, optional): CDP endpoint to connect to.
     
     Returns:
         tuple[StdIOStatefulClient, str]: 
@@ -135,6 +137,11 @@ def create_browser_client(
     # Isolation
     if isolated:
         client_args.append("--isolated")
+    
+    # CDP Endpoint
+    if cdp_endpoint:
+        client_args.append("--cdp-endpoint")
+        client_args.append(cdp_endpoint)
     
     # Executable path
     client_args.append("--executable-path")

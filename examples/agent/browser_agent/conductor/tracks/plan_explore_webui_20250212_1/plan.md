@@ -10,10 +10,10 @@
 - [ ] Task: Conductor - User Manual Verification 'Backend Foundation & Event Streaming' (Protocol in workflow.md)
 
 ## Phase 2: Agent Control & CDP Bridge
-- [ ] Task: Implement Agent Control Gate
+- [x] Task: Implement Agent Control Gate
     - [ ] Write tests for the `AgentControlGate` pause/resume mechanism
     - [ ] Update `BrowserAgent` and `ExploringAgent` to support execution gating
-- [ ] Task: Implement CDP Bridge & Frame Capture
+- [x] Task: Implement CDP Bridge & Frame Capture
     - [ ] Write tests for CDP frame acquisition and input forwarding
     - [ ] Implement the `CDPBridge` to stream frames and handle `viewer.input` commands
 - [ ] Task: Conductor - User Manual Verification 'Agent Control & CDP Bridge' (Protocol in workflow.md)

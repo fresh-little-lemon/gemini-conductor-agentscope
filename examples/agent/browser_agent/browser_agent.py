@@ -114,6 +114,7 @@ class BrowserAgent(ReActAgent):
         task_decomposition_prompt: str = _BROWSER_AGENT_DEFAULT_TASK_DECOMPOSITION_PROMPT,
         token_counter: TokenCounterBase = OpenAITokenCounter("gpt-4o"),
         max_mem_length: int = 20,
+        control_gate: Optional[Any] = None,
     ) -> None:
         """Initialize the Browser Agent."""
         self.start_url = start_url
@@ -129,6 +130,7 @@ class BrowserAgent(ReActAgent):
         self.snapshot_in_chunk: list[str] = []
         self.subtasks: list[Any] = []
         self.original_task = ""
+        self.control_gate = control_gate
         self.current_subtask_idx = 0
         self.current_subtask: Any = None
         self.iter_n = 0
@@ -270,6 +272,9 @@ class BrowserAgent(ReActAgent):
         structured_output = None
         reply_msg = None
         for iter_n in range(self.max_iters):
+            # Check for pause
+            if getattr(self, "control_gate", None):
+                await self.control_gate.wait_if_paused()
             self.iter_n = iter_n + 1
             await self._summarize_mem()
             msg_reasoning = await self._pure_reasoning(tool_choice)

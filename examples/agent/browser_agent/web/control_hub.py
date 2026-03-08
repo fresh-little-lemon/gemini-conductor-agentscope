@@ -30,3 +30,14 @@ class ControlHub:
         if agent_id not in self.paused_agents:
             return # Not paused
         await self.paused_agents[agent_id].wait()
+
+class AgentControlGate:
+    """A wrapper for subagents to check if they should pause."""
+    def __init__(self, hub: Optional[ControlHub], agent_id: str) -> None:
+        self.hub = hub
+        self.agent_id = agent_id
+
+    async def wait_if_paused(self) -> None:
+        """Wait if the hub says this agent is paused."""
+        if self.hub:
+            await self.hub.wait_if_paused(self.agent_id)
