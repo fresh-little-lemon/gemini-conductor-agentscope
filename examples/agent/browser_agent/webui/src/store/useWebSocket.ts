@@ -1,9 +1,8 @@
 import { useEffect, useRef } from 'react';
-import { useAppDispatch, useAppState } from './useAppStore';
+import { useAppDispatch } from './useAppStore';
 
 export function useWebSocket() {
     const dispatch = useAppDispatch();
-    const { activeSessionId } = useAppState();
     const socketRef = useRef<WebSocket | null>(null);
 
     useEffect(() => {
@@ -38,7 +37,7 @@ export function useWebSocket() {
         };
 
         const handleEvent = (event: any) => {
-            const { type, payload, agent_id } = event;
+            const { type, payload } = event;
 
             switch (type) {
                 case 'run.stage':

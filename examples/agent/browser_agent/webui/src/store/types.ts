@@ -1,6 +1,6 @@
 export type AppMode = 'plan' | 'explore';
 export type RightTab = 'chat' | 'workspace';
-export type CenterTab = 'plan' | string; # 'plan' or agent_id
+export type CenterTab = 'plan' | string; // 'plan' or agent_id
 
 export interface ChatMessage {
     type: 'user' | 'assistant';

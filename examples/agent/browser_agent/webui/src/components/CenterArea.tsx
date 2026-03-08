@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { AppMode } from '../App';
+import type { AppMode } from '../store/types';
 import ChatInterface from './ChatInterface';
 import BrowserView from './BrowserView';
 import { cn } from '../lib/utils';
@@ -57,7 +57,7 @@ export default function CenterArea({ onSwitchMode }: CenterAreaProps) {
                 {activeTab === 'plan' ? (
                     <div className="h-full flex flex-col items-center justify-center p-4">
                         <div className="w-full max-w-4xl h-full">
-                            <ChatInterface isSidebar={false} />
+                            <ChatInterface filterType="system" />
                         </div>
                     </div>
                 ) : (

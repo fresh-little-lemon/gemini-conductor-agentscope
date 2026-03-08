@@ -1,14 +1,12 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  --bg-main: #F8F9FA;
-  --bg-panel: #FFFFFF;
-  --text-main: #1A1A1A;
-  --text-muted: #6B7280;
-  --border-subtle: #E5E7EB;
-  --accent-primary: #2563EB;
+@theme {
+  --color-bgMain: #F8F9FA;
+  --color-bgPanel: #FFFFFF;
+  --color-textMain: #1A1A1A;
+  --color-textMuted: #6B7280;
+  --color-borderSubtle: #E5E7EB;
+  --color-accentPrimary: #2563EB;
 }
 
 @layer base {

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { useStore, RunEvent } from './useStore';
+import { useStore } from './useStore';
+import type { RunEvent } from './useStore';
 
 describe('useStore', () => {
   beforeEach(() => {

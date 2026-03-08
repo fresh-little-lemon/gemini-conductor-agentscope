@@ -5,7 +5,7 @@
  * Includes localStorage persistence for key slices.
  */
 
-import React, {
+import {
     createContext,
     useContext,
     useReducer,
